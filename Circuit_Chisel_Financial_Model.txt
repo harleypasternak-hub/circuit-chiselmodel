@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuit & Chisel — Financial Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0C0F14;
+  --surface: #151920;
+  --surface2: #1C2028;
+  --surface3: #232830;
+  --border: #2A3040;
+  --text: #E8ECF2;
+  --text-dim: #8892A4;
+  --text-muted: #5A6478;
+  --green: #4ADE80;
+  --green-dim: rgba(74,222,128,0.12);
+  --red: #F87171;
+  --red-dim: rgba(248,113,113,0.12);
+  --warn: #FB923C;
+  --warn-dim: rgba(251,146,60,0.12);
+  --accent: #D4714E;
+  --accent-dim: rgba(212,113,78,0.12);
+  --accent-glow: rgba(212,113,78,0.25);
+  --blue: #E8955A;
+  --blue-dim: rgba(232,149,90,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo-mark{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:16px;height:16px;fill:#fff}
+.header h1{font-family:'Fraunces',serif;font-size:18px;font-weight:500;color:var(--accent);letter-spacing:-0.3px}
+.header .sub{font-size:10px;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;margin-top:1px}
+.header-right{font-size:10px;color:var(--text-muted);text-align:right}
+.tabs{display:flex;gap:4px;padding:12px 28px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.tab{padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text-dim);transition:all 0.2s;border:1px solid transparent}
+.tab:hover{color:var(--text);background:var(--surface2)}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.content{padding:24px 28px;overflow-x:auto}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.summary-grid{display:flex;flex-direction:column;gap:8px}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.summary-card-header{display:grid;grid-template-columns:200px 1fr 1fr 1fr;align-items:center;padding:0}
+.summary-card-header .sc-label{padding:14px 16px;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);font-weight:600}
+.summary-card-header .sc-year{padding:14px 16px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);font-weight:600}
+.summary-row{display:grid;grid-template-columns:200px 1fr 1fr 1fr;align-items:center;border-top:1px solid rgba(42,48,64,0.5);transition:background 0.15s}
+.summary-row:hover{background:var(--surface2)}
+.summary-row .sr-label{padding:10px 16px;font-size:12px;color:var(--text-dim);font-weight:500}
+.summary-row .sr-val{padding:10px 16px;text-align:right;font-family:'Fraunces',serif;font-size:16px;font-weight:500;color:var(--text)}
+.summary-row .sr-val .sr-sub{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--text-muted);margin-top:2px;display:block;font-weight:400}
+.summary-row.sr-bold .sr-label{color:var(--text);font-weight:700;font-size:13px}
+.summary-row.sr-bold .sr-val{font-size:20px;font-weight:700}
+.summary-row.sr-pct .sr-val{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600}
+.summary-row.sr-indent .sr-label{padding-left:32px;font-size:11px;color:var(--text-muted)}
+.summary-row.sr-indent .sr-val{font-size:14px;color:var(--text-dim)}
+.summary-row .sr-val.val-neg{color:var(--red)}
+.summary-row .sr-val.val-pos{color:var(--green)}
+.sr-delta{display:inline-block;font-family:'DM Sans',sans-serif;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;margin-top:2px;line-height:1.3;letter-spacing:-0.01em}
+.sr-delta.delta-pos{color:var(--green);background:var(--green-dim)}
+.sr-delta.delta-neg{color:var(--red);background:var(--red-dim)}
+.sr-addl{display:inline-block;font-family:'DM Sans',sans-serif;font-size:9px;font-weight:600;margin-left:4px}
+.summary-section{border-left:3px solid var(--accent)}
+.summary-section.sec-revenue{border-left-color:var(--accent)}
+.summary-section.sec-profit{border-left-color:var(--green)}
+.summary-section.sec-opex{border-left-color:var(--warn)}
+.summary-section.sec-bottom{border-left-color:var(--blue)}
+.summary-section.sec-hc{border-left-color:#A78BFA}
+.summary-section .summary-card-header{background:var(--surface2)}
+.chart-container{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.chart-title{font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.5px}
+.chart-legend{display:flex;gap:16px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim)}
+.legend-dot{width:8px;height:8px;border-radius:2px}
+.chart-body{display:flex;height:280px}
+.chart-yaxis{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;padding-right:8px;padding-bottom:28px;width:48px;flex-shrink:0}
+.chart-yaxis .y-tick{font-size:9px;color:var(--text-muted);font-variant-numeric:tabular-nums;line-height:1}
+.chart-plot{flex:1;position:relative;display:flex;align-items:flex-end;gap:3px;min-width:0;overflow-x:auto;overflow-y:hidden;padding-bottom:28px}
+.chart-plot::-webkit-scrollbar{height:4px}
+.chart-plot::-webkit-scrollbar-track{background:transparent}
+.chart-plot::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.chart-plot.has-negatives{align-items:stretch}
+.chart-gridlines{position:absolute;top:0;left:0;right:0;bottom:28px;pointer-events:none;z-index:0}
+.chart-gridlines .gridline{position:absolute;left:0;right:0;height:1px;background:var(--border);opacity:0.5}
+.bar-group{min-width:14px;flex:1 0 14px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;z-index:1;position:relative}
+.chart-plot.has-negatives .bar-group{justify-content:flex-start}
+.bar-pos-zone{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:100%}
+.bar-neg-zone{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;width:100%}
+.bar{width:100%;min-width:8px;border-radius:3px 3px 0 0;transition:height 0.4s ease;position:relative}
+.bar-neg-zone .bar{border-radius:0 0 3px 3px}
+.bar.actual{background:#4B5563}
+.bar.scenario{background:var(--accent)}
+.bar.negative{background:var(--red);opacity:0.65}
+.bar-val-label{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--text-dim);white-space:nowrap;font-variant-numeric:tabular-nums;z-index:2}
+.bar-neg-zone .bar-val-label{top:auto;bottom:-14px}
+.bar-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--text-muted);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.zero-line{position:absolute;left:0;right:0;height:1px;background:var(--text-dim);opacity:0.6;z-index:1}
+.forecast-divider{position:absolute;top:0;bottom:28px;width:1px;border-left:1.5px dashed var(--text-muted);opacity:0.5;z-index:2;pointer-events:none}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.fin-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;table-layout:fixed}
+.fin-table col.col-label{width:200px}
+.fin-table col.col-month{width:72px}
+.fin-table col.col-annual-sum{width:80px}
+.fin-table th{position:sticky;top:0;z-index:2;background:var(--surface2);padding:8px 6px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:2px solid var(--border);overflow:hidden;text-overflow:ellipsis}
+.fin-table th:first-child{text-align:left;position:sticky;left:0;z-index:3;background:var(--surface2)}
+.fin-table td{padding:6px 6px;text-align:right;border-bottom:1px solid rgba(42,48,64,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fin-table td:first-child{text-align:left;position:sticky;left:0;z-index:1;background:var(--surface);font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.fin-table tr:hover td{background:var(--surface2)}
+.fin-table tr:hover td:first-child{background:var(--surface3)}
+.fin-table .row-header{font-weight:700;color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:0.4px}
+.fin-table .row-total{font-weight:700;border-top:2px solid var(--border);border-bottom:2px solid var(--border)}
+.fin-table .row-total td{padding:8px 10px}
+.fin-table .row-subtotal{font-weight:600}
+.fin-table .row-subtotal td{border-top:1px solid var(--border)}
+.fin-table .row-pct td{color:var(--text-dim);font-style:italic;font-size:11px}
+.fin-table .neg{color:var(--red)}
+.fin-table .pos{color:var(--green)}
+.fin-table .col-annual{background:rgba(0,209,178,0.08);border-left:2px solid var(--accent);font-weight:600}
+.fin-table .actual-col{background:rgba(74,222,128,0.03)}
+.summary-layout{display:flex;gap:20px;align-items:stretch;width:100%}
+.summary-left{flex:1 1 0%;min-width:0;overflow:visible;display:flex;flex-direction:column}
+.summary-right{width:400px;min-width:400px;flex-shrink:0;display:flex;flex-direction:column}
+.drivers-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;flex:1;display:flex;flex-direction:column}
+.drivers-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.drivers-panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:500;color:var(--text)}
+#driverGrid{flex:1;overflow-y:auto}
+#driverGrid::-webkit-scrollbar{width:4px}
+#driverGrid::-webkit-scrollbar-track{background:transparent}
+#driverGrid::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.summary-charts{margin-top:20px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:0}
+@media(max-width:1100px){.chart-row{grid-template-columns:1fr}}
+@media(max-width:900px){.summary-layout{flex-direction:column}.summary-right{width:100%;min-width:0}}
+.hc-grid{width:100%;border-collapse:collapse;margin:6px 0}
+.hc-grid th{font-size:9px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);padding:4px 4px;text-align:center;font-weight:600}
+.hc-grid th:first-child{text-align:left}
+.hc-grid td{padding:3px 2px;text-align:center}
+.hc-grid .hc-role{text-align:left;font-size:11px;color:var(--text-dim);font-weight:500}
+.hc-input{width:56px !important;text-align:center !important;padding:3px 4px !important;font-size:11px !important}
+.hc-note{font-size:9px;color:var(--text-muted);margin-bottom:6px;font-style:italic}
+.driver-section{margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(42,48,64,0.4)}
+.driver-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.driver-section h3{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px}
+.driver-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:5px 0;border-bottom:1px solid rgba(42,48,64,0.15)}
+.driver-row:last-child{border-bottom:none}
+.driver-label{font-size:11px;color:var(--text-dim);flex:1;min-width:130px}
+.driver-base{font-size:9px;color:var(--text-muted);margin-right:6px}
+.driver-input{width:64px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 6px;color:var(--text);font-size:11px;text-align:right;font-family:'DM Sans',sans-serif;font-variant-numeric:tabular-nums}
+.driver-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+.driver-input.modified{border-color:var(--accent);background:var(--accent-dim)}
+.driver-unit{font-size:9px;color:var(--text-muted);margin-left:2px;width:24px}
+input[type=range]{-webkit-appearance:none;width:90px;height:3px;background:var(--surface3);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--accent);border-radius:50%;cursor:pointer;box-shadow:0 0 4px var(--accent-glow)}
+.btn{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-size:10px;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif}
+.btn:hover{background:var(--surface3);color:var(--text)}
+.btn-reset{border-color:var(--red);color:var(--red)}
+.btn-reset:hover{background:var(--red-dim)}
+.toggle-group{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:16px}
+.toggle-btn{padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--text-dim);border:none;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.toggle-btn.active{background:var(--accent);color:#fff}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.section-title{font-family:'Fraunces',serif;font-size:20px;font-weight:500}
+.scroll-hint{font-size:10px;color:var(--text-muted);margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M18.36 5.64l-5.66 5.66 5.66 5.66-1.41 1.41-5.66-5.66-5.66 5.66-1.41-1.41 5.66-5.66-5.66-5.66 1.41-1.41 5.66 5.66 5.66-5.66z"/></svg></div>
+    <div>
+      <h1>Circuit &amp; Chisel, Inc.</h1>
+      <div class="sub">Financial Model &nbsp;&middot;&nbsp; Powered by SFP</div>
+    </div>
+  </div>
+  <div class="header-right">
+    Model Date: Feb 2026<br>
+    Actuals through Jan 2026
+  </div>
+</div>
+
+<div class="tabs" id="tabBar">
+  <div class="tab active" data-tab="growth">Growth Trajectory</div>
+  <div class="tab" data-tab="summary">Summary & Drivers</div>
+  <div class="tab" data-tab="income">Income Statement</div>
+  <div class="tab" data-tab="balance">Balance Sheet</div>
+  <div class="tab" data-tab="cashflow">Cash Flow</div>
+</div>
+
+<div class="content">
+  <!-- GROWTH TRAJECTORY TAB -->
+  <div class="tab-content active" id="tab-growth">
+    <div class="section-header"><div class="section-title">Growth Trajectory</div></div>
+    <div class="chart-row">
+      <div class="chart-container">
+        <div class="chart-header"><div class="chart-title">Monthly Revenue</div>
+          <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Projected</div></div>
+        </div>
+        <div class="chart-body"><div class="chart-yaxis" id="revYAxis"></div><div class="chart-plot" id="revChart"></div></div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header"><div class="chart-title">ARR Trajectory</div>
+          <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Projected</div></div>
+        </div>
+        <div class="chart-body"><div class="chart-yaxis" id="arrYAxis"></div><div class="chart-plot" id="arrChart"></div></div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-container">
+        <div class="chart-header"><div class="chart-title">EBITDA &mdash; Monthly</div>
+          <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Positive</div><div class="legend-item"><div class="legend-dot" style="background:var(--red);opacity:0.65"></div>Negative</div></div>
+        </div>
+        <div class="chart-body"><div class="chart-yaxis" id="ebitdaYAxis"></div><div class="chart-plot" id="ebitdaChart"></div></div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header"><div class="chart-title">Cash Balance</div>
+          <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Projected</div></div>
+        </div>
+        <div class="chart-body"><div class="chart-yaxis" id="cashYAxis"></div><div class="chart-plot" id="cashChart"></div></div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-container">
+        <div class="chart-header"><div class="chart-title">Cumulative Signups</div>
+          <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Projected</div></div>
+        </div>
+        <div class="chart-body"><div class="chart-yaxis" id="signupYAxis"></div><div class="chart-plot" id="signupChart"></div></div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header"><div class="chart-title">Gross Margin %</div>
+          <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Positive</div><div class="legend-item"><div class="legend-dot" style="background:var(--red);opacity:0.65"></div>Negative</div></div>
+        </div>
+        <div class="chart-body"><div class="chart-yaxis" id="gmYAxis"></div><div class="chart-plot" id="gmChart"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY & DRIVERS TAB -->
+  <div class="tab-content" id="tab-summary">
+    <div class="summary-layout">
+      <div class="summary-left">
+        <div class="summary-grid" id="summaryCards"></div>
+      </div>
+      <div class="summary-right">
+        <div class="drivers-panel">
+          <div class="drivers-panel-header">
+            <div class="drivers-panel-title">Drivers & Assumptions</div>
+            <button class="btn btn-reset" onclick="resetAll()">Reset All</button>
+          </div>
+          <div id="driverGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-income">
+    <div class="section-header">
+      <div class="section-title">Income Statement</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setISMode('abs',this)">Scenario</button>
+        <button class="toggle-btn" onclick="setISMode('var',this)">Variance vs Base</button>
+      </div>
+    </div>
+    <div class="scroll-hint">&larr; Scroll horizontally for all months &rarr;</div>
+    <div class="table-wrap"><table class="fin-table" id="isTable"></table></div>
+  </div>
+
+  <div class="tab-content" id="tab-balance">
+    <div class="section-header"><div class="section-title">Balance Sheet</div></div>
+    <div class="scroll-hint">&larr; Scroll horizontally for all months &rarr;</div>
+    <div class="table-wrap"><table class="fin-table" id="bsTable"></table></div>
+  </div>
+
+  <div class="tab-content" id="tab-cashflow">
+    <div class="section-header"><div class="section-title">Cash Flow Statement</div></div>
+    <div class="chart-container">
+      <div class="chart-header"><div class="chart-title">Cash Balance</div>
+        <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#4B5563"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Projected</div></div>
+      </div>
+      <div class="chart-body"><div class="chart-yaxis" id="cfCashYAxis"></div><div class="chart-plot" id="cfCashChart"></div></div>
+    </div>
+    <div class="scroll-hint">&larr; Scroll horizontally for all months &rarr;</div>
+    <div class="table-wrap"><table class="fin-table" id="cfTable"></table></div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+// Months: Oct 2025 (idx 0) through Dec 2027 (idx 26)
+// Actuals: Oct 2025 - Jan 2026 (idx 0-3), Projections: Feb 2026 - Dec 2027 (idx 4-26)
+const MONTHS = ['Oct 25','Nov 25','Dec 25','Jan 26',
+  'Feb 26','Mar 26','Apr 26','May 26','Jun 26','Jul 26','Aug 26','Sep 26','Oct 26','Nov 26','Dec 26',
+  'Jan 27','Feb 27','Mar 27','Apr 27','May 27','Jun 27','Jul 27','Aug 27','Sep 27','Oct 27','Nov 27','Dec 27'];
+const NUM_MONTHS = 27;
+const NUM_ACTUAL = 4; // Oct 25 - Jan 26
+
+// ——— ACTUALS: Oct 25 - Jan 26 (4 months, combined Main + Healthcare) ———
+const ACT_SERVICES_REV = [0, 10000, 10000, 10000];
+const ACT_TRANSACTION_REV = [0,0,0,0]; // Pre-launch: no transaction revenue
+const ACT_PARTNER_REV = [0,0,0,0];
+const ACT_TOTAL_REV = ACT_SERVICES_REV.map((v,i)=>v+ACT_TRANSACTION_REV[i]+ACT_PARTNER_REV[i]);
+const ACT_COGS = [0,0,0,0]; // No COGS on services
+
+// OpEx actuals (6 categories, derived from financial statements)
+const ACT_GA_PAY = [50508, 59101, 57520, 58761];
+const ACT_SM_PAY = [35660, 45686, 43841, 45019];
+const ACT_RD_PAY = [96537, 97882, 103149, 98295];
+const ACT_GA_NONPAY = [53260, 30261, 42823, 40532];
+const ACT_SM_NONPAY = [80106, 53130, 45590, 50075];
+const ACT_RD_NONPAY = [3000, 3000, 3000, 3000];
+const ACT_TOTAL_OPEX = ACT_GA_PAY.map((v,i)=>v+ACT_SM_PAY[i]+ACT_RD_PAY[i]+ACT_GA_NONPAY[i]+ACT_SM_NONPAY[i]+ACT_RD_NONPAY[i]);
+
+const ACT_OTHER_INC = [28844, 27474, 26108, 23276]; // Interest - expenses
+const ACT_CASH = [16626138, 16476050, 16232155, 16050045]; // Combined cash
+
+// Signups: pre-launch, no signups in actuals
+const ACT_SIGNUPS = [0,0,0,0];
+const ACT_CUM_SIGNUPS = [0,0,0,0];
+const ACT_POWER_USERS = [0,0,0,0];
+
+// ——— PROJECTION BASE CASE from Simple Financial Model ———
+// New signups per month (Feb 26 = idx 0 here = model month 2 = 20K)
+// Simple model: Jan=10K, Feb=20K, Mar=50K, Apr=100K, ...
+// Since Jan is actual (last actual month), projections start Feb
+const BASE_SIGNUPS = [20000,50000,100000,150000,200000,250000,300000,350000,400000,450000,500000,
+  550000,600000,650000,700000,750000,800000,850000,900000,950000,1000000,1050000,1100000];
+
+// ——— SIMPLE MODEL ASSUMPTIONS ———
+const BASE = {
+  // Signup growth (linear add per month)
+  signupGrowth26: 50000,  // monthly signups increase by this much each month in 2026
+  signupGrowth27: 50000,  // same for 2027
+  startSignups: 20000,    // Feb 2026 starting signups
+
+  // User segments
+  pctInactive: 85,      // % that never use credit
+  pctCreditOnly: 5,     // % that use credit but don't upgrade
+  pctPowerUser: 10,     // % that spend well beyond credit
+
+  // Unit economics
+  blendedCAC: 1.50,         // $ per signup
+  freeCredit: 10,            // $ credited to user
+  creditDeliveryCost: 9.09,  // cost to deliver credit
+  partnerSubsidy: 10,        // $ per active user
+  markup: 10,                // % on underlying cost
+  avgPowerSpend: 200,        // $ gross spend per power user
+
+  // Services revenue
+  servicesGM: 100,  // services revenue has ~100% margin (consulting)
+  servicesRev: 10,  // $K per month (continuing services)
+
+  // Gross margin profile (override): negative through 2026, flips positive in 2027
+  gmOverride: true,
+  gmStart26: -55,         // GM% at start of projections (Feb 2026)
+  gmEnd26: -5,            // GM% at end of 2026 (Dec 2026) — still negative
+  gmStart27: 3,           // GM% at start of 2027 (Jan 2027) — flips positive
+  gmGrowthPerMonth27: 2.5,// linear pp increase per month in 2027
+
+  // Headcount-driven OpEx
+  hcGAStart: 3,           // starting G&A headcount
+  hcRDStart: 7,           // starting R&D headcount
+  hcSMStart: 0,           // starting S&M headcount
+  hiresPerMonth: 4,       // new hires added per month
+  hireSplitGA: 25,        // % of new hires to G&A
+  hireSplitRD: 50,        // % of new hires to R&D
+  hireSplitSM: 25,        // % of new hires to S&M
+  costPerHeadK: 21,       // $K per person per month (fully loaded payroll)
+  nonPayrollPct: 25,      // non-payroll as % of payroll
+
+  // OpEx adjustments (%)
+  gaPayAdj: 0, smPayAdj: 0, rdPayAdj: 0,
+  gaNonpayAdj: 0, smNonpayAdj: 0, rdNonpayAdj: 0,
+
+  // Interest
+  interestAPR: 3.05,
+  startCash: 16050, // $K (Jan 2026)
+
+  // Capital infusions: [{monthIdx, amountK}]
+  infusions: [],
+};
+
+let state = JSON.parse(JSON.stringify(BASE));
+let isMode = 'abs';
+
+// ===================== COMPUTE =====================
+function compute(s) {
+  const R = {
+    servicesRev:[], transactionRev:[], partnerRev:[], totalRev:[],
+    cogs:[], cacCost:[], creditCost:[], gross:[], grossPct:[],
+    gaPay:[], smPay:[], rdPay:[], gaNonpay:[], smNonpay:[], rdNonpay:[],
+    totalPayroll:[], totalNonpay:[], totalOpex:[],
+    ebitda:[], ebitdaPct:[], otherInc:[], netInc:[], netIncPct:[],
+    totalARR:[], transARR:[], partnerARR:[], servicesARR:[],
+    newSignups:[], cumSignups:[], powerUsers:[], creditOnlyUsers:[], activeUsers:[],
+    hcGA:[], hcRD:[], hcSM:[], hcTotal:[],
+    cash:[], ar:[], otherCA:[], totalAssets:[],
+    ap:[], accrued:[], totalLiab:[], equity:[],
+    cfOps:[], cfInv:[], cfFin:[], cfNet:[], endCash:[],
+    infusionAmt:[], evPerSignup:[]
+  };
+
+  let cumSignups = 10000; // Jan 2026 had 10K (first month of simple model)
+  let prevCash = s.startCash * 1000; // in $
+
+  for (let i = 0; i < NUM_MONTHS; i++) {
+    R.infusionAmt[i] = 0;
+    if (s.infusions) s.infusions.forEach(inf => { if (inf.monthIdx === i) R.infusionAmt[i] += inf.amountK * 1000; });
+
+    if (i < NUM_ACTUAL) {
+      // ——— ACTUALS ———
+      R.servicesRev[i] = ACT_SERVICES_REV[i];
+      R.transactionRev[i] = ACT_TRANSACTION_REV[i];
+      R.partnerRev[i] = ACT_PARTNER_REV[i];
+      R.totalRev[i] = ACT_TOTAL_REV[i];
+      R.cogs[i] = ACT_COGS[i];
+      R.cacCost[i] = 0;
+      R.creditCost[i] = 0;
+      R.gross[i] = R.totalRev[i] - R.cogs[i];
+      R.grossPct[i] = R.totalRev[i] ? R.gross[i]/R.totalRev[i]*100 : 0;
+      R.gaPay[i] = ACT_GA_PAY[i]; R.smPay[i] = ACT_SM_PAY[i]; R.rdPay[i] = ACT_RD_PAY[i];
+      R.gaNonpay[i] = ACT_GA_NONPAY[i]; R.smNonpay[i] = ACT_SM_NONPAY[i]; R.rdNonpay[i] = ACT_RD_NONPAY[i];
+      R.totalPayroll[i] = R.gaPay[i]+R.smPay[i]+R.rdPay[i];
+      R.totalNonpay[i] = R.gaNonpay[i]+R.smNonpay[i]+R.rdNonpay[i];
+      R.totalOpex[i] = ACT_TOTAL_OPEX[i];
+      R.ebitda[i] = R.gross[i] - R.totalOpex[i];
+      R.ebitdaPct[i] = R.totalRev[i] ? R.ebitda[i]/R.totalRev[i]*100 : 0;
+      R.otherInc[i] = ACT_OTHER_INC[i];
+      R.netInc[i] = R.ebitda[i] + R.otherInc[i];
+      R.netIncPct[i] = R.totalRev[i] ? R.netInc[i]/R.totalRev[i]*100 : 0;
+      R.cash[i] = ACT_CASH[i] + R.infusionAmt[i]; prevCash = R.cash[i];
+      R.newSignups[i] = 0; R.cumSignups[i] = 0; R.powerUsers[i] = 0;
+      R.creditOnlyUsers[i] = 0; R.activeUsers[i] = 0; R.evPerSignup[i] = 0;
+      // Actual headcount: 3 G&A, 7 R&D, 0 S&M = 10 total
+      R.hcGA[i] = s.hcGAStart; R.hcRD[i] = s.hcRDStart; R.hcSM[i] = s.hcSMStart;
+      R.hcTotal[i] = R.hcGA[i] + R.hcRD[i] + R.hcSM[i];
+      // BS actuals (simplified)
+      R.ar[i] = 0;
+      R.otherCA[i] = 160000;
+      R.totalAssets[i] = R.cash[i] + R.ar[i] + R.otherCA[i];
+      R.ap[i] = 20000;
+      R.accrued[i] = 165000;
+      R.totalLiab[i] = R.ap[i] + R.accrued[i];
+      R.equity[i] = R.totalAssets[i] - R.totalLiab[i];
+    } else {
+      // ——— PROJECTIONS ———
+      const pi = i - NUM_ACTUAL; // 0 = Feb 2026
+      // Determine which year (2026: pi 0-10 = Feb-Dec, 2027: pi 11-22 = Jan-Dec)
+      const is2027 = pi >= 11;
+      const yrIdx = is2027 ? pi - 11 : pi; // month within year (0-indexed)
+
+      // Signups: linear growth model
+      // Feb 2026 = startSignups, then +signupGrowth per month
+      const growth = is2027 ? s.signupGrowth27 : s.signupGrowth26;
+      const monthFromStart = pi; // 0 = Feb 26
+      // Simple model pattern: each month adds roughly signupGrowth more than previous
+      let newSU;
+      if (pi === 0) {
+        newSU = s.startSignups;
+      } else {
+        newSU = s.startSignups + growth * pi;
+      }
+      newSU = Math.max(0, Math.round(newSU));
+      R.newSignups[i] = newSU;
+      cumSignups += newSU;
+      R.cumSignups[i] = cumSignups;
+
+      // User segments (of new signups this month)
+      const inactive = newSU * s.pctInactive / 100;
+      const creditOnly = newSU * s.pctCreditOnly / 100;
+      const power = newSU * s.pctPowerUser / 100;
+      R.powerUsers[i] = Math.round(power);
+      R.creditOnlyUsers[i] = Math.round(creditOnly);
+      R.activeUsers[i] = Math.round(creditOnly + power);
+
+      // Revenue
+      // Transaction margin: power user gross margin + credit-only margin
+      const grossMarginRate = s.markup / (100 + s.markup);
+      const powerUserRev = power * s.avgPowerSpend * grossMarginRate;
+      const creditOnlyRev = creditOnly * s.freeCredit * grossMarginRate;
+      R.transactionRev[i] = powerUserRev + creditOnlyRev;
+
+      // Partner subsidies
+      R.partnerRev[i] = (creditOnly + power) * s.partnerSubsidy;
+
+      // Services (flat)
+      R.servicesRev[i] = s.servicesRev * 1000;
+
+      R.totalRev[i] = R.transactionRev[i] + R.partnerRev[i] + R.servicesRev[i];
+
+      // COGS / Gross Margin
+      R.cacCost[i] = newSU * s.blendedCAC;
+      R.creditCost[i] = (creditOnly + power) * s.creditDeliveryCost;
+
+      if (s.gmOverride) {
+        // Use GM profile: linear interpolation through 2026 (negative), then growing in 2027
+        let gmPct;
+        if (!is2027) {
+          // Feb 2026 (pi=0) through Dec 2026 (pi=10): interpolate gmStart26 → gmEnd26
+          gmPct = s.gmStart26 + (s.gmEnd26 - s.gmStart26) * (pi / 10);
+        } else {
+          // Jan 2027 (pi=11) onward: gmStart27 + linear growth
+          const m27 = pi - 11; // 0=Jan, 1=Feb, ... 11=Dec
+          gmPct = s.gmStart27 + s.gmGrowthPerMonth27 * m27;
+        }
+        R.grossPct[i] = gmPct;
+        R.gross[i] = R.totalRev[i] * gmPct / 100;
+        R.cogs[i] = R.totalRev[i] - R.gross[i];
+      } else {
+        // Bottom-up COGS from unit economics
+        R.cogs[i] = R.cacCost[i] + R.creditCost[i];
+        R.gross[i] = R.totalRev[i] - R.cogs[i];
+        R.grossPct[i] = R.totalRev[i] ? R.gross[i]/R.totalRev[i]*100 : 0;
+      }
+
+      // Headcount: base + cumulative hires, split by department
+      const totalHires = s.hiresPerMonth * (pi + 1);
+      R.hcGA[i] = s.hcGAStart + Math.round(totalHires * s.hireSplitGA / 100);
+      R.hcRD[i] = s.hcRDStart + Math.round(totalHires * s.hireSplitRD / 100);
+      R.hcSM[i] = s.hcSMStart + Math.round(totalHires * s.hireSplitSM / 100);
+      R.hcTotal[i] = R.hcGA[i] + R.hcRD[i] + R.hcSM[i];
+
+      // OpEx: headcount × cost/head for payroll, × nonPayroll factor for non-payroll
+      const monthlyCost = s.costPerHeadK * 1000;
+      R.gaPay[i] = R.hcGA[i] * monthlyCost * (1 + s.gaPayAdj/100);
+      R.smPay[i] = R.hcSM[i] * monthlyCost * (1 + s.smPayAdj/100);
+      R.rdPay[i] = R.hcRD[i] * monthlyCost * (1 + s.rdPayAdj/100);
+      R.totalPayroll[i] = R.gaPay[i]+R.smPay[i]+R.rdPay[i];
+
+      const npFactor = s.nonPayrollPct / 100;
+      R.gaNonpay[i] = R.gaPay[i] * npFactor * (1 + s.gaNonpayAdj/100);
+      R.smNonpay[i] = R.smPay[i] * npFactor * (1 + s.smNonpayAdj/100);
+      R.rdNonpay[i] = R.rdPay[i] * npFactor * (1 + s.rdNonpayAdj/100);
+      R.totalNonpay[i] = R.gaNonpay[i]+R.smNonpay[i]+R.rdNonpay[i];
+      R.totalOpex[i] = R.totalPayroll[i]+R.totalNonpay[i];
+
+      R.ebitda[i] = R.gross[i] - R.totalOpex[i];
+      R.ebitdaPct[i] = R.totalRev[i] ? R.ebitda[i]/R.totalRev[i]*100 : 0;
+
+      // Interest income
+      const monthlyRate = s.interestAPR / 100 / 12;
+      R.otherInc[i] = prevCash * monthlyRate;
+      R.netInc[i] = R.ebitda[i] + R.otherInc[i];
+      R.netIncPct[i] = R.totalRev[i] ? R.netInc[i]/R.totalRev[i]*100 : 0;
+
+      // Expected value per signup
+      const evInactive = -s.blendedCAC;
+      const evCreditOnly = -s.blendedCAC - s.creditDeliveryCost + s.partnerSubsidy + s.freeCredit * grossMarginRate;
+      const evPower = -s.blendedCAC + (s.avgPowerSpend * grossMarginRate) - (s.creditDeliveryCost - s.partnerSubsidy - s.freeCredit * grossMarginRate);
+      R.evPerSignup[i] = (s.pctInactive/100) * evInactive + (s.pctCreditOnly/100) * evCreditOnly + (s.pctPowerUser/100) * evPower;
+
+      // Cash
+      R.cash[i] = prevCash + R.netInc[i] + R.infusionAmt[i];
+      prevCash = R.cash[i];
+
+      // BS
+      R.ar[i] = 0; // pre-paid/instant settlement model
+      R.otherCA[i] = 100000;
+      R.totalAssets[i] = R.cash[i] + R.ar[i] + R.otherCA[i];
+      R.ap[i] = R.totalOpex[i] * 15/30; // 15 day payables
+      R.accrued[i] = 165000;
+      R.totalLiab[i] = R.ap[i] + R.accrued[i];
+      R.equity[i] = R.totalAssets[i] - R.totalLiab[i];
+    }
+
+    // ARR = monthly revenue * 12
+    R.transARR[i] = R.transactionRev[i] * 12;
+    R.partnerARR[i] = R.partnerRev[i] * 12;
+    R.servicesARR[i] = R.servicesRev[i] * 12;
+    R.totalARR[i] = R.totalRev[i] * 12;
+  }
+
+  // CF for actuals
+  for (let i = 0; i < NUM_ACTUAL; i++) {
+    if (i === 0) R.cfNet[i] = R.cash[i] - 16855000; // prior month cash estimate
+    else R.cfNet[i] = R.cash[i] - R.cash[i-1];
+    R.cfOps[i] = R.cfNet[i] - R.infusionAmt[i]; R.cfInv[i] = 0; R.cfFin[i] = R.infusionAmt[i];
+    R.endCash[i] = R.cash[i];
+  }
+  // CF for projections
+  for (let i = NUM_ACTUAL; i < NUM_MONTHS; i++) {
+    R.cfOps[i] = R.netInc[i];
+    R.cfInv[i] = 0;
+    R.cfFin[i] = R.infusionAmt[i];
+    R.cfNet[i] = R.cfOps[i] + R.cfInv[i] + R.cfFin[i];
+    R.endCash[i] = R.cash[i];
+  }
+
+  // Annual aggregations
+  R.annual = {};
+  // 2025: idx 0-2 (Oct-Dec), 2026: idx 3-14 (Jan-Dec), 2027: idx 15-26 (Jan-Dec)
+  const y25 = (arr) => arr.slice(0,3).reduce((a,b)=>a+(b||0),0);
+  const y26 = (arr) => arr.slice(3,15).reduce((a,b)=>a+(b||0),0);
+  const y27 = (arr) => arr.slice(15,27).reduce((a,b)=>a+(b||0),0);
+
+  R.annual.y25 = {rev:y25(R.totalRev),transRev:y25(R.transactionRev),partnerRev:y25(R.partnerRev),svcRev:y25(R.servicesRev),
+    cogs:y25(R.cogs),gross:y25(R.gross),
+    gaPay:y25(R.gaPay),smPay:y25(R.smPay),rdPay:y25(R.rdPay),
+    gaNonpay:y25(R.gaNonpay),smNonpay:y25(R.smNonpay),rdNonpay:y25(R.rdNonpay),
+    totalPayroll:y25(R.totalPayroll),totalNonpay:y25(R.totalNonpay),totalOpex:y25(R.totalOpex),
+    ebitda:y25(R.ebitda),netInc:y25(R.netInc),otherInc:y25(R.otherInc),signups:y25(R.newSignups),infusions:y25(R.infusionAmt)};
+  R.annual.y26 = {rev:y26(R.totalRev),transRev:y26(R.transactionRev),partnerRev:y26(R.partnerRev),svcRev:y26(R.servicesRev),
+    cogs:y26(R.cogs),gross:y26(R.gross),
+    gaPay:y26(R.gaPay),smPay:y26(R.smPay),rdPay:y26(R.rdPay),
+    gaNonpay:y26(R.gaNonpay),smNonpay:y26(R.smNonpay),rdNonpay:y26(R.rdNonpay),
+    totalPayroll:y26(R.totalPayroll),totalNonpay:y26(R.totalNonpay),totalOpex:y26(R.totalOpex),
+    ebitda:y26(R.ebitda),netInc:y26(R.netInc),otherInc:y26(R.otherInc),signups:y26(R.newSignups),infusions:y26(R.infusionAmt)};
+  R.annual.y27 = {rev:y27(R.totalRev),transRev:y27(R.transactionRev),partnerRev:y27(R.partnerRev),svcRev:y27(R.servicesRev),
+    cogs:y27(R.cogs),gross:y27(R.gross),
+    gaPay:y27(R.gaPay),smPay:y27(R.smPay),rdPay:y27(R.rdPay),
+    gaNonpay:y27(R.gaNonpay),smNonpay:y27(R.smNonpay),rdNonpay:y27(R.rdNonpay),
+    totalPayroll:y27(R.totalPayroll),totalNonpay:y27(R.totalNonpay),totalOpex:y27(R.totalOpex),
+    ebitda:y27(R.ebitda),netInc:y27(R.netInc),otherInc:y27(R.otherInc),signups:y27(R.newSignups),infusions:y27(R.infusionAmt)};
+
+  R.annual.y25arr = R.totalARR[2]; // Dec 25
+  R.annual.y26arr = R.totalARR[14]; // Dec 26
+  R.annual.y27arr = R.totalARR[26]; // Dec 27
+  R.annual.y25cash = R.cash[2]; // Dec 25
+  R.annual.y26cash = R.cash[14]; // Dec 26
+  R.annual.y27cash = R.cash[26]; // Dec 27
+  R.annual.y25signups = R.cumSignups[2]||0;
+  R.annual.y26signups = R.cumSignups[14]||0;
+  R.annual.y27signups = R.cumSignups[26]||0;
+  // Headcount (year-end snapshots)
+  R.annual.y25hcTotal = R.hcTotal[2]||10;
+  R.annual.y26hcTotal = R.hcTotal[14];
+  R.annual.y27hcTotal = R.hcTotal[26];
+  R.annual.y26hcGA = R.hcGA[14]; R.annual.y27hcGA = R.hcGA[26];
+  R.annual.y26hcRD = R.hcRD[14]; R.annual.y27hcRD = R.hcRD[26];
+  R.annual.y26hcSM = R.hcSM[14]; R.annual.y27hcSM = R.hcSM[26];
+
+  return R;
+}
+
+let results = compute(state);
+let baseResults = compute(BASE);
+
+// ===================== FORMAT HELPERS =====================
+const fmtM = (v) => {
+  if (v === undefined || isNaN(v)) return '\u2014';
+  const m = v / 1e6;
+  const neg = m < 0;
+  const abs = Math.abs(m);
+  let str;
+  if (abs >= 100) str = '$' + abs.toFixed(0) + 'M';
+  else if (abs >= 10) str = '$' + abs.toFixed(1) + 'M';
+  else str = '$' + abs.toFixed(2) + 'M';
+  return neg ? '(' + str + ')' : str;
+};
+const fmtK = (v) => {
+  if (v === undefined || isNaN(v)) return '\u2014';
+  const k = v / 1e3;
+  const neg = k < 0;
+  const abs = Math.abs(k);
+  let str;
+  if (abs >= 1000) str = '$' + (abs/1000).toFixed(1) + 'M';
+  else if (abs >= 100) str = '$' + abs.toFixed(0) + 'K';
+  else if (abs >= 10) str = '$' + abs.toFixed(1) + 'K';
+  else str = '$' + abs.toFixed(1) + 'K';
+  return neg ? '(' + str + ')' : str;
+};
+const fmtCell = (v) => {
+  if (v === undefined || isNaN(v)) return '\u2014';
+  const k = v / 1e3;
+  return k.toFixed(1);
+};
+const fmtPct = (v) => v.toFixed(1) + '%';
+const fmtPctVal = (v) => v.toFixed(1) + '%';
+
+// Use $K for this model (annual rev < $5M in 2025, but crosses in 2026)
+// Use $M for consistency since projections are large
+const SCALE = 'M';
+const fmt = fmtM;
+
+// ===================== RENDER =====================
+function render() {
+  results = compute(state);
+  baseResults = compute(BASE);
+  renderSummaryCards();
+  renderRevChart(); renderARRChart(); renderEBITDAChart();
+  renderCashChart(); renderSignupChart(); renderGMChart();
+  renderIS(); renderBS(); renderCF(); renderCFCashChart();
+}
+
+function renderSummaryCards() {
+  const R = results, B = baseResults, y = R.annual, yb = B.annual;
+  const gm = (yr) => yr.rev ? (yr.gross / yr.rev * 100) : 0;
+  const em = (yr) => yr.rev ? (yr.ebitda / yr.rev * 100) : 0;
+  const nm = (yr) => yr.rev ? (yr.netInc / yr.rev * 100) : 0;
+
+  const sections = [
+    { cls:'sec-revenue', rows:[
+      {label:'Total ARR', vals:[y.y25arr,y.y26arr,y.y27arr], base:[yb.y25arr,yb.y26arr,yb.y27arr], bold:true},
+      {label:'Transaction ARR', vals:[R.transARR[2]||0,R.transARR[14]||0,R.transARR[26]||0], base:[0,0,0], indent:true},
+      {label:'Partner Subsidy ARR', vals:[R.partnerARR[2]||0,R.partnerARR[14]||0,R.partnerARR[26]||0], base:[0,0,0], indent:true},
+      {label:'Total Revenue', vals:[y.y25.rev,y.y26.rev,y.y27.rev], base:[yb.y25.rev,yb.y26.rev,yb.y27.rev], bold:true},
+      {label:'Transaction Revenue', vals:[y.y25.transRev,y.y26.transRev,y.y27.transRev], base:[yb.y25.transRev,yb.y26.transRev,yb.y27.transRev], indent:true},
+      {label:'Partner Subsidies', vals:[y.y25.partnerRev,y.y26.partnerRev,y.y27.partnerRev], base:[yb.y25.partnerRev,yb.y26.partnerRev,yb.y27.partnerRev], indent:true},
+      {label:'Services Revenue', vals:[y.y25.svcRev,y.y26.svcRev,y.y27.svcRev], base:[yb.y25.svcRev,yb.y26.svcRev,yb.y27.svcRev], indent:true},
+      {label:'Cumulative Signups', vals:[y.y25signups,y.y26signups,y.y27signups], base:[yb.y25signups,yb.y26signups,yb.y27signups], bold:true, hc:true},
+    ]},
+    { cls:'sec-profit', rows:[
+      {label:'Cost of Revenue', vals:[y.y25.cogs,y.y26.cogs,y.y27.cogs], base:[yb.y25.cogs,yb.y26.cogs,yb.y27.cogs], cost:true},
+      {label:'Gross Profit', vals:[y.y25.gross,y.y26.gross,y.y27.gross], base:[yb.y25.gross,yb.y26.gross,yb.y27.gross], bold:true},
+      {label:'Gross Margin', vals:[gm(y.y25),gm(y.y26),gm(y.y27)], base:[gm(yb.y25),gm(yb.y26),gm(yb.y27)], pct:true},
+    ]},
+    { cls:'sec-opex', rows:[
+      {label:'G&A Payroll', vals:[y.y25.gaPay,y.y26.gaPay,y.y27.gaPay], base:[yb.y25.gaPay,yb.y26.gaPay,yb.y27.gaPay], cost:true, indent:true},
+      {label:'S&M Payroll', vals:[y.y25.smPay,y.y26.smPay,y.y27.smPay], base:[yb.y25.smPay,yb.y26.smPay,yb.y27.smPay], cost:true, indent:true},
+      {label:'R&D Payroll', vals:[y.y25.rdPay,y.y26.rdPay,y.y27.rdPay], base:[yb.y25.rdPay,yb.y26.rdPay,yb.y27.rdPay], cost:true, indent:true},
+      {label:'G&A Non-Payroll', vals:[y.y25.gaNonpay,y.y26.gaNonpay,y.y27.gaNonpay], base:[yb.y25.gaNonpay,yb.y26.gaNonpay,yb.y27.gaNonpay], cost:true, indent:true},
+      {label:'S&M Non-Payroll', vals:[y.y25.smNonpay,y.y26.smNonpay,y.y27.smNonpay], base:[yb.y25.smNonpay,yb.y26.smNonpay,yb.y27.smNonpay], cost:true, indent:true},
+      {label:'R&D Non-Payroll', vals:[y.y25.rdNonpay,y.y26.rdNonpay,y.y27.rdNonpay], base:[yb.y25.rdNonpay,yb.y26.rdNonpay,yb.y27.rdNonpay], cost:true, indent:true},
+      {label:'Total OpEx', vals:[y.y25.totalOpex,y.y26.totalOpex,y.y27.totalOpex], base:[yb.y25.totalOpex,yb.y26.totalOpex,yb.y27.totalOpex], cost:true, bold:true},
+      {label:'EBITDA', vals:[y.y25.ebitda,y.y26.ebitda,y.y27.ebitda], base:[yb.y25.ebitda,yb.y26.ebitda,yb.y27.ebitda], bold:true},
+      {label:'EBITDA Margin', vals:[em(y.y25),em(y.y26),em(y.y27)], base:[em(yb.y25),em(yb.y26),em(yb.y27)], pct:true},
+    ]},
+    { cls:'sec-bottom', rows:[
+      {label:'Net Income', vals:[y.y25.netInc,y.y26.netInc,y.y27.netInc], base:[yb.y25.netInc,yb.y26.netInc,yb.y27.netInc], bold:true},
+      {label:'Net Margin', vals:[nm(y.y25),nm(y.y26),nm(y.y27)], base:[nm(yb.y25),nm(yb.y26),nm(yb.y27)], pct:true},
+      {label:'Capital Infusions', vals:[y.y25.infusions||0,y.y26.infusions||0,y.y27.infusions||0], base:[yb.y25.infusions||0,yb.y26.infusions||0,yb.y27.infusions||0]},
+      {label:'Cash (End of Year)', vals:[y.y25cash,y.y26cash,y.y27cash], base:[yb.y25cash,yb.y26cash,yb.y27cash], bold:true},
+    ]},
+    { cls:'sec-hc', rows:[
+      {label:'Total Headcount', vals:[y.y25hcTotal,y.y26hcTotal,y.y27hcTotal], base:[yb.y25hcTotal,yb.y26hcTotal,yb.y27hcTotal], bold:true, hc:true},
+      {label:'G&A', vals:[3,y.y26hcGA,y.y27hcGA], base:[3,yb.y26hcGA,yb.y27hcGA], indent:true, hc:true},
+      {label:'R&D', vals:[7,y.y26hcRD,y.y27hcRD], base:[7,yb.y26hcRD,yb.y27hcRD], indent:true, hc:true},
+      {label:'S&M', vals:[0,y.y26hcSM,y.y27hcSM], base:[0,yb.y26hcSM,yb.y27hcSM], indent:true, hc:true},
+    ]},
+  ];
+
+  function deltaBadge(delta, isPct, isHc, isCost) {
+    if (isPct) {
+      if (Math.abs(delta) < 0.05) return '';
+      const sign = delta > 0 ? '+' : '';
+      const cls = delta > 0 ? 'delta-pos' : 'delta-neg';
+      return `<span class="sr-delta ${cls}">${sign}${delta.toFixed(1)}pp</span>`;
+    }
+    if (isHc) {
+      const d = Math.round(delta);
+      if (d === 0) return '';
+      const sign = d > 0 ? '+' : '';
+      const cls = d > 0 ? 'delta-pos' : 'delta-neg';
+      return `<span class="sr-delta ${cls}">${sign}${d}</span>`;
+    }
+    const m = delta / 1e6;
+    if (Math.abs(m) < 0.005) return '';
+    const sign = m > 0 ? '+' : '';
+    let cls;
+    if (isCost) cls = m > 0 ? 'delta-neg' : 'delta-pos';
+    else cls = m > 0 ? 'delta-pos' : 'delta-neg';
+    const absM = Math.abs(m);
+    const txt = sign + '$' + (absM >= 10 ? m.toFixed(1) : m.toFixed(2)) + 'M';
+    return `<span class="sr-delta ${cls}">${txt}</span>`;
+  }
+
+  const grid = document.getElementById('summaryCards');
+  let html = '';
+  sections.forEach(sec => {
+    html += `<div class="summary-card summary-section ${sec.cls}">`;
+    html += `<div class="summary-card-header"><div class="sc-label"></div><div class="sc-year">2025 Actual</div><div class="sc-year">2026</div><div class="sc-year">2027</div></div>`;
+    sec.rows.forEach(r => {
+      const cls = r.bold ? 'sr-bold' : r.pct ? 'sr-pct' : r.indent ? 'sr-indent' : '';
+      html += `<div class="summary-row ${cls}"><div class="sr-label">${r.label}</div>`;
+      r.vals.forEach((v, ci) => {
+        const bv = r.base ? r.base[ci] : v;
+        const delta = v - bv;
+        const showDelta = ci > 0;
+        if (r.pct) {
+          const badge = showDelta ? deltaBadge(delta, true) : '';
+          html += `<div class="sr-val">${fmtPctVal(v)}${badge}</div>`;
+        } else if (r.hc) {
+          const fmtNum = (n) => { if (n >= 1e6) return (n/1e6).toFixed(1)+'M'; if (n >= 1e3) return (n/1e3).toFixed(0)+'K'; return n.toString(); };
+          const badge = showDelta ? deltaBadge(delta, false, true) : '';
+          html += `<div class="sr-val">${fmtNum(v)}${badge}</div>`;
+        } else {
+          const neg = v < 0;
+          const display = r.cost ? '(' + fmtM(Math.abs(v)) + ')' : (neg ? '(' + fmtM(Math.abs(v)) + ')' : fmtM(v));
+          const vcls = (neg || r.cost) ? 'val-neg' : '';
+          const badge = showDelta ? deltaBadge(delta, false, false, r.cost) : '';
+          html += `<div class="sr-val ${vcls}">${display}${badge}</div>`;
+        }
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+// ===================== CHARTS =====================
+function renderYAxis(yAxisId, ticks, fmt) {
+  const yEl = document.getElementById(yAxisId);
+  if (!yEl) return;
+  yEl.innerHTML = ticks.map(t => `<div class="y-tick">${fmt(t)}</div>`).reverse().join('');
+}
+function renderGridlines(plotEl, numTicks) {
+  const old = plotEl.querySelector('.chart-gridlines');
+  if (old) old.remove();
+  const gl = document.createElement('div');
+  gl.className = 'chart-gridlines';
+  for (let i = 0; i <= numTicks; i++) {
+    const line = document.createElement('div');
+    line.className = 'gridline';
+    line.style.bottom = (i / numTicks * 100) + '%';
+    gl.appendChild(line);
+  }
+  plotEl.prepend(gl);
+}
+
+function makeBarChart(containerId, data, maxVal, opts) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+  opts = opts || {};
+  const hasNegs = opts.hasNegatives || false;
+  const yAxisId = opts.yAxisId || null;
+  const yFmt = opts.yFmt || (v => '$'+v.toFixed(1)+'M');
+  const valLabelEvery = opts.valLabelEvery || 3;
+
+  if (hasNegs) {
+    el.classList.add('has-negatives');
+    let maxPos=0,maxNeg=0;
+    data.forEach(d => { const v=d.bars[0]?d.bars[0].val:0; if(v>=0)maxPos=Math.max(maxPos,v); else maxNeg=Math.max(maxNeg,Math.abs(v)); });
+    if(maxPos===0&&maxNeg===0){maxPos=1;}
+    const niceMax=(v)=>{const p=Math.pow(10,Math.floor(Math.log10(Math.max(v,0.01))));return Math.ceil(v*1.15/p)*p;};
+    maxPos=niceMax(maxPos); maxNeg=niceMax(maxNeg);
+    const total=maxPos+maxNeg,posRatio=maxPos/total,negRatio=maxNeg/total;
+    if(yAxisId){
+      const ticks=[];const step=maxPos/3;
+      for(let i=3;i>=0;i--)ticks.push(yFmt(step*i));
+      const nStep=maxNeg/2;for(let i=1;i<=2;i++)ticks.push(yFmt(-nStep*i));
+      const yEl=document.getElementById(yAxisId);
+      if(yEl)yEl.innerHTML=ticks.map(t=>`<div class="y-tick">${t}</div>`).join('');
+    }
+    const gl=document.createElement('div');gl.className='chart-gridlines';
+    const zl=document.createElement('div');zl.className='zero-line';zl.style.top=(posRatio*100)+'%';gl.appendChild(zl);
+    for(let i=1;i<=3;i++){const l=document.createElement('div');l.className='gridline';l.style.top=(posRatio*(1-i/3)*100)+'%';gl.appendChild(l);}
+    for(let i=1;i<=2;i++){const l=document.createElement('div');l.className='gridline';l.style.top=(posRatio*100+negRatio*i/2*100)+'%';gl.appendChild(l);}
+    el.appendChild(gl);
+    data.forEach((d,idx)=>{
+      const grp=document.createElement('div');grp.className='bar-group';
+      const posZone=document.createElement('div');posZone.className='bar-pos-zone';posZone.style.height=(posRatio*100)+'%';
+      const negZone=document.createElement('div');negZone.className='bar-neg-zone';negZone.style.height=(negRatio*100)+'%';
+      const v=d.bars[0]?d.bars[0].val:0;
+      const bar=document.createElement('div');bar.className='bar';bar.title=(d.label||'')+': '+(d.bars[0]?d.bars[0].tip:'');
+      if(v>=0){bar.className+=' '+(d.bars[0]?d.bars[0].cls:'scenario');bar.style.height=(maxPos>0?(v/maxPos*100):0)+'%';if(idx%valLabelEvery===0){const lbl=document.createElement('div');lbl.className='bar-val-label';lbl.textContent=yFmt(v);bar.appendChild(lbl);}posZone.appendChild(bar);}
+      else{bar.className+=' negative';bar.style.height=(maxNeg>0?(Math.abs(v)/maxNeg*100):0)+'%';if(idx%valLabelEvery===0){const lbl=document.createElement('div');lbl.className='bar-val-label';lbl.textContent=yFmt(v);bar.appendChild(lbl);}negZone.appendChild(bar);}
+      grp.appendChild(posZone);grp.appendChild(negZone);
+      const lbl=document.createElement('div');lbl.className='bar-label';lbl.textContent=d.label||'';grp.appendChild(lbl);el.appendChild(grp);
+    });
+  } else {
+    el.classList.remove('has-negatives');
+    const mx=maxVal||Math.max(...data.map(d=>d.bars.reduce((s,b)=>s+Math.max(0,b.val),0)),1);
+    renderGridlines(el,4);
+    if(yAxisId){const ticks=[];for(let i=0;i<=4;i++)ticks.push(mx*i/4);renderYAxis(yAxisId,ticks,yFmt);}
+    data.forEach((d,idx)=>{
+      const grp=document.createElement('div');grp.className='bar-group';
+      d.bars.forEach(b=>{
+        const bar=document.createElement('div');bar.className='bar '+(b.cls||'');
+        bar.style.height=Math.max(Math.abs(b.val)/mx*100,0.5)+'%';bar.title=(d.label||'')+': '+(b.tip||'');
+        if(idx%valLabelEvery===0){const lbl=document.createElement('div');lbl.className='bar-val-label';lbl.textContent=yFmt(b.val);bar.appendChild(lbl);}
+        grp.appendChild(bar);
+      });
+      const lbl=document.createElement('div');lbl.className='bar-label';lbl.textContent=d.label||'';grp.appendChild(lbl);el.appendChild(grp);
+    });
+  }
+  if(opts.actualCount&&opts.actualCount<data.length){
+    const divider=document.createElement('div');divider.className='forecast-divider';el.appendChild(divider);
+    requestAnimationFrame(()=>{
+      const groups=el.querySelectorAll('.bar-group');
+      if(groups.length>opts.actualCount){
+        const lastA=groups[opts.actualCount-1],firstF=groups[opts.actualCount];
+        const elR=el.getBoundingClientRect(),lastR=lastA.getBoundingClientRect(),firstR=firstF.getBoundingClientRect();
+        divider.style.left=((lastR.right+firstR.left)/2-elR.left)+'px';
+      }
+    });
+  }
+}
+
+const SHORT_MO=(function(){const f=MONTHS;return f.map((m,i)=>i%3===0?m:'');})();
+const shortM=(v)=>{if(Math.abs(v)>=10)return '$'+v.toFixed(0)+'M';if(Math.abs(v)>=1)return '$'+v.toFixed(1)+'M';if(Math.abs(v)<0.01)return '$0';const sign=v<0?'-':'';return sign+'$'+Math.abs(v).toFixed(2)+'M';};
+const shortK=(v)=>{if(v>=1000)return(v/1000).toFixed(0)+'K';return Math.round(v).toString();};
+
+function renderRevChart(){
+  const R=results;let mx=0;for(let i=0;i<NUM_MONTHS;i++)mx=Math.max(mx,R.totalRev[i]);mx=mx/1e6*1.15;
+  const data=R.totalRev.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v/1e6,cls:i<NUM_ACTUAL?'actual':'scenario',tip:fmtM(v)}]}));
+  makeBarChart('revChart',data,mx,{yAxisId:'revYAxis',yFmt:shortM,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+function renderARRChart(){
+  const R=results;const mx=Math.max(...R.totalARR)/1e6*1.15;
+  const data=R.totalARR.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v/1e6,cls:i<NUM_ACTUAL?'actual':'scenario',tip:fmtM(v)}]}));
+  makeBarChart('arrChart',data,mx,{yAxisId:'arrYAxis',yFmt:shortM,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+function renderEBITDAChart(){
+  const R=results;
+  const data=R.ebitda.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v/1e6,cls:i<NUM_ACTUAL?'actual':'scenario',tip:fmtM(v)}]}));
+  makeBarChart('ebitdaChart',data,null,{hasNegatives:true,yAxisId:'ebitdaYAxis',yFmt:shortM,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+function renderCashChart(){
+  const R=results;const hasN=R.cash.some(v=>v<0);const mx=Math.max(...R.cash)/1e6*1.15;
+  const data=R.cash.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v/1e6,cls:i<NUM_ACTUAL?'actual':'scenario',tip:fmtM(v)}]}));
+  makeBarChart('cashChart',data,hasN?null:mx,{hasNegatives:hasN,yAxisId:'cashYAxis',yFmt:shortM,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+function renderCFCashChart(){
+  const R=results;const hasN=R.cash.some(v=>v<0);const mx=Math.max(...R.cash)/1e6*1.15;
+  const data=R.cash.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v/1e6,cls:i<NUM_ACTUAL?'actual':'scenario',tip:fmtM(v)}]}));
+  makeBarChart('cfCashChart',data,hasN?null:mx,{hasNegatives:hasN,yAxisId:'cfCashYAxis',yFmt:shortM,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+function renderSignupChart(){
+  const R=results;const mx=Math.max(...R.cumSignups)*1.15;
+  const fmtSU=(v)=>{if(v>=1e6)return(v/1e6).toFixed(1)+'M';if(v>=1e3)return(v/1e3).toFixed(0)+'K';return Math.round(v).toString();};
+  const data=R.cumSignups.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v,cls:i<NUM_ACTUAL?'actual':'scenario',tip:fmtSU(v)+' signups'}]}));
+  makeBarChart('signupChart',data,mx,{yAxisId:'signupYAxis',yFmt:fmtSU,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+function renderGMChart(){
+  const R=results;
+  const fmtGM=(v)=>v.toFixed(0)+'%';
+  const data=R.grossPct.map((v,i)=>({label:SHORT_MO[i],bars:[{val:v,cls:i<NUM_ACTUAL?'actual':'scenario',tip:v.toFixed(1)+'%'}]}));
+  makeBarChart('gmChart',data,null,{hasNegatives:true,yAxisId:'gmYAxis',yFmt:fmtGM,valLabelEvery:3,actualCount:NUM_ACTUAL});
+}
+
+// ===================== INCOME STATEMENT =====================
+function renderIS(){
+  const R=results,B=baseResults;
+  const tbl=document.getElementById('isTable');
+  const NC=NUM_MONTHS;
+  let cg='<colgroup><col class="col-label">';for(let i=0;i<NC;i++)cg+='<col class="col-month">';
+  cg+='<col class="col-annual-sum"><col class="col-annual-sum"><col class="col-annual-sum"></colgroup>';
+  let hdr='<thead><tr><th>($M)</th>';
+  for(let i=0;i<NC;i++){const ac=i<NUM_ACTUAL?' actual-col':'';hdr+=`<th class="${ac}">${MONTHS[i]}</th>`;}
+  hdr+='<th class="col-annual">2025</th><th class="col-annual">2026</th><th class="col-annual">2027</th></tr></thead>';
+
+  function makeRow(label,arr,cls,isVar,pit,baseArr){
+    let row=`<tr class="${cls}"><td>${label}</td>`;
+    for(let i=0;i<NC;i++){
+      let v=arr[i]||0;if(isVar&&baseArr)v=v-(baseArr[i]||0);
+      const vm=v/1e6;const neg=vm<-0.005;const ac=i<NUM_ACTUAL?' actual-col':'';
+      row+=`<td class="${neg?'neg':''}${ac}">${neg?'('+Math.abs(vm).toFixed(2)+')':vm.toFixed(2)}</td>`;
+    }
+    if(pit){[2,14,26].forEach(idx=>{let v=arr[idx]||0;if(isVar&&baseArr)v=v-(baseArr[idx]||0);v=v/1e6;const neg=v<-0.005;
+      row+=`<td class="col-annual ${neg?'neg':''}">${neg?'('+Math.abs(v).toFixed(1)+')':v.toFixed(1)}</td>`;});}
+    else{[[0,3],[3,15],[15,27]].forEach(([s,e])=>{let tot=arr.slice(s,e).reduce((a,b)=>a+(b||0),0);
+      if(isVar&&baseArr)tot=tot-baseArr.slice(s,e).reduce((a,b)=>a+(b||0),0);
+      tot=tot/1e6;const neg=tot<-0.005;
+      row+=`<td class="col-annual ${neg?'neg':''}">${neg?'('+Math.abs(tot).toFixed(1)+')':tot.toFixed(1)}</td>`;});}
+    return row+'</tr>';
+  }
+
+  function makePctRow(label,numArr,denArr,baseNum,baseDen,isVar){
+    let row=`<tr class="row-pct"><td>${label}</td>`;
+    for(let i=0;i<NC;i++){
+      const pct=denArr[i]?(numArr[i]||0)/denArr[i]*100:0;const ac=i<NUM_ACTUAL?' actual-col':'';
+      if(isVar&&baseNum&&baseDen){const bp=baseDen[i]?(baseNum[i]||0)/baseDen[i]*100:0;const pp=pct-bp;const neg=pp<-0.05;const pos=pp>0.05;const sign=pos?'+':'';
+        row+=`<td class="${neg?'neg':''}${ac}">${(neg||pos)?sign+pp.toFixed(1)+'pp':'0.0pp'}</td>`;}
+      else row+=`<td class="${ac}">${pct.toFixed(1)}%</td>`;
+    }
+    [0,1,2].forEach(y=>{const s=y===0?0:y===1?3:15;const e=y===0?3:y===1?15:27;
+      const n=numArr.slice(s,e).reduce((a,b)=>a+(b||0),0);const d=denArr.slice(s,e).reduce((a,b)=>a+(b||0),0);
+      if(isVar&&baseNum&&baseDen){const bn=baseNum.slice(s,e).reduce((a,b)=>a+(b||0),0);const bd=baseDen.slice(s,e).reduce((a,b)=>a+(b||0),0);
+        const pct=d?n/d*100:0;const bp=bd?bn/bd*100:0;const pp=pct-bp;const neg=pp<-0.05;const pos=pp>0.05;const sign=pos?'+':'';
+        row+=`<td class="col-annual ${neg?'neg':''}">${(neg||pos)?sign+pp.toFixed(1)+'pp':'0.0pp'}</td>`;}
+      else row+=`<td class="col-annual">${d?(n/d*100).toFixed(1):'0.0'}%</td>`;});
+    return row+'</tr>';
+  }
+
+  const isVar=isMode==='var';
+  let body='<tbody>';
+  body+=`<tr class="row-header"><td colspan="${NC+4}">Revenue</td></tr>`;
+  body+=makeRow('Transaction Revenue',R.transactionRev,'',isVar,false,B.transactionRev);
+  body+=makeRow('Partner Subsidies',R.partnerRev,'',isVar,false,B.partnerRev);
+  body+=makeRow('Services Revenue',R.servicesRev,'',isVar,false,B.servicesRev);
+  body+=makeRow('Total Revenue',R.totalRev,'row-subtotal',isVar,false,B.totalRev);
+  body+=`<tr class="row-header"><td colspan="${NC+4}">Cost of Revenue</td></tr>`;
+  body+=makeRow('Total COGS',R.cogs.map(v=>-v),'row-subtotal',isVar,false,B.cogs.map(v=>-v));
+  body+=makeRow('Gross Profit',R.gross,'row-subtotal',isVar,false,B.gross);
+  body+=makePctRow('Gross Margin %',R.gross,R.totalRev,B.gross,B.totalRev,isVar);
+  body+=`<tr class="row-header"><td colspan="${NC+4}">Operating Expenses — Payroll</td></tr>`;
+  body+=makeRow('G&A Payroll',R.gaPay.map(v=>-v),'',isVar,false,B.gaPay.map(v=>-v));
+  body+=makeRow('S&M Payroll',R.smPay.map(v=>-v),'',isVar,false,B.smPay.map(v=>-v));
+  body+=makeRow('R&D Payroll',R.rdPay.map(v=>-v),'',isVar,false,B.rdPay.map(v=>-v));
+  body+=makeRow('Total Payroll',R.totalPayroll.map(v=>-v),'row-subtotal',isVar,false,B.totalPayroll.map(v=>-v));
+  body+=`<tr class="row-header"><td colspan="${NC+4}">Operating Expenses — Non-Payroll</td></tr>`;
+  body+=makeRow('G&A Non-Payroll',R.gaNonpay.map(v=>-v),'',isVar,false,B.gaNonpay.map(v=>-v));
+  body+=makeRow('S&M Non-Payroll',R.smNonpay.map(v=>-v),'',isVar,false,B.smNonpay.map(v=>-v));
+  body+=makeRow('R&D Non-Payroll',R.rdNonpay.map(v=>-v),'',isVar,false,B.rdNonpay.map(v=>-v));
+  body+=makeRow('Total Non-Payroll',R.totalNonpay.map(v=>-v),'row-subtotal',isVar,false,B.totalNonpay.map(v=>-v));
+  body+=makeRow('Total OpEx',R.totalOpex.map(v=>-v),'row-subtotal',isVar,false,B.totalOpex.map(v=>-v));
+  body+=makeRow('EBITDA',R.ebitda,'row-total',isVar,false,B.ebitda);
+  body+=makePctRow('EBITDA Margin %',R.ebitda,R.totalRev,B.ebitda,B.totalRev,isVar);
+  body+=makeRow('Other Income (Interest)',R.otherInc,'',isVar,false,B.otherInc);
+  body+=makeRow('Net Income',R.netInc,'row-total',isVar,false,B.netInc);
+  body+=makePctRow('Net Margin %',R.netInc,R.totalRev,B.netInc,B.totalRev,isVar);
+  body+=`<tr class="row-header"><td colspan="${NC+4}">ARR (Annualized Run Rate)</td></tr>`;
+  body+=makeRow('Transaction ARR',R.transARR,'',isVar,true,B.transARR);
+  body+=makeRow('Partner Subsidy ARR',R.partnerARR,'',isVar,true,B.partnerARR);
+  body+=makeRow('Total ARR',R.totalARR,'row-subtotal',isVar,true,B.totalARR);
+  body+='</tbody>';
+  tbl.innerHTML=cg+hdr+body;
+}
+
+function setISMode(mode,btn){isMode=mode;btn.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderIS();}
+
+// ===================== BALANCE SHEET =====================
+function renderBS(){
+  const R=results;const tbl=document.getElementById('bsTable');const NC=NUM_MONTHS;
+  let cg='<colgroup><col class="col-label">';for(let i=0;i<NC;i++)cg+='<col class="col-month">';cg+='</colgroup>';
+  let hdr='<thead><tr><th>($M)</th>';for(let i=0;i<NC;i++){const ac=i<NUM_ACTUAL?' actual-col':'';hdr+=`<th class="${ac}">${MONTHS[i]}</th>`;}hdr+='</tr></thead>';
+  function makeRow(label,arr,cls){let row=`<tr class="${cls}"><td>${label}</td>`;
+    for(let i=0;i<NC;i++){const v=(arr[i]||0)/1e6;const neg=v<-0.005;const ac=i<NUM_ACTUAL?' actual-col':'';
+      row+=`<td class="${neg?'neg':''}${ac}">${v.toFixed(2)}</td>`;}return row+'</tr>';}
+  let body='<tbody>';
+  body+=`<tr class="row-header"><td>Assets</td>${'<td></td>'.repeat(NC)}</tr>`;
+  body+=makeRow('Cash & Equivalents',R.cash,'');
+  body+=makeRow('Accounts Receivable',R.ar,'');
+  body+=makeRow('Other Current Assets',R.otherCA,'');
+  body+=makeRow('Total Assets',R.totalAssets,'row-subtotal');
+  body+=`<tr class="row-header"><td>Liabilities & Equity</td>${'<td></td>'.repeat(NC)}</tr>`;
+  body+=makeRow('Accounts Payable',R.ap,'');
+  body+=makeRow('Accrued Expenses',R.accrued?R.cash.map(()=>165000):R.cash.map(()=>165000),'');
+  body+=makeRow('Total Liabilities',R.totalLiab,'row-subtotal');
+  body+=makeRow('Equity',R.equity,'row-subtotal');
+  body+='</tbody>';tbl.innerHTML=cg+hdr+body;
+}
+
+// ===================== CASH FLOW =====================
+function renderCF(){
+  const R=results;const tbl=document.getElementById('cfTable');const NC=NUM_MONTHS;
+  let cg='<colgroup><col class="col-label">';for(let i=0;i<NC;i++)cg+='<col class="col-month">';cg+='</colgroup>';
+  let hdr='<thead><tr><th>($M)</th>';for(let i=0;i<NC;i++){const ac=i<NUM_ACTUAL?' actual-col':'';hdr+=`<th class="${ac}">${MONTHS[i]}</th>`;}hdr+='</tr></thead>';
+  function makeRow(label,arr,cls){let row=`<tr class="${cls}"><td>${label}</td>`;
+    for(let i=0;i<NC;i++){const v=(arr[i]||0)/1e6;const neg=v<-0.005;const ac=i<NUM_ACTUAL?' actual-col':'';
+      row+=`<td class="${neg?'neg':''}${ac}">${neg?'('+Math.abs(v).toFixed(2)+')':v.toFixed(2)}</td>`;}return row+'</tr>';}
+  let body='<tbody>';
+  body+=makeRow('Net Income',R.netInc,'');
+  body+=makeRow('Cash from Operations',R.cfOps,'row-subtotal');
+  body+=makeRow('Cash from Investing',R.cfInv,'');
+  body+=makeRow('Cash from Financing',R.cfFin,'');
+  body+=makeRow('Net Change in Cash',R.cfNet,'row-subtotal');
+  body+=makeRow('Ending Cash Balance',R.cash,'row-total');
+  body+='</tbody>';tbl.innerHTML=cg+hdr+body;
+}
+
+// ===================== DRIVERS =====================
+function renderDrivers(){
+  const grid=document.getElementById('driverGrid');
+  let html='';
+
+  // — Signup Growth —
+  html+=`<div class="driver-section"><h3>Signup Growth</h3>`;
+  html+=`<div class="hc-note">Base: 20K initial signups, adding 50K more per month</div>`;
+  const suRows=[
+    {key:'startSignups',label:'Starting Signups (Feb 26)',unit:'K',min:1000,max:100000,step:1000,div:1000},
+    {key:'signupGrowth26',label:'Monthly Increase (2026)',unit:'K',min:10000,max:200000,step:5000,div:1000},
+    {key:'signupGrowth27',label:'Monthly Increase (2027)',unit:'K',min:10000,max:200000,step:5000,div:1000},
+  ];
+  suRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.5;
+    const dispCur=(cur/r.div).toFixed(0)+'K',dispBase=(base/r.div).toFixed(0)+'K';
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${dispBase}</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=(this.value/${r.div}).toFixed(0)+'K'">
+      <input type="text" class="driver-input${mod?' modified':''}" value="${dispCur}" style="width:64px"
+        onfocus="this.value=state['${r.key}']/${r.div}"
+        onblur="var v=parseFloat(this.value.replace(/[^0-9.-]/g,''))*${r.div}||${base};v=Math.max(${r.min},Math.min(${r.max},v));updateDriver('${r.key}',v);if(this.previousElementSibling)this.previousElementSibling.value=v;this.value=(v/${r.div}).toFixed(0)+'K'"
+        onkeydown="if(event.key==='Enter')this.blur()" ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit"></span></div>`;
+  });
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('Signups')">Reset</button></div></div>`;
+
+  // — User Segments —
+  html+=`<div class="driver-section"><h3>User Segments</h3>`;
+  html+=`<div class="hc-note">Must sum to 100%</div>`;
+  const segRows=[
+    {key:'pctInactive',label:'% Inactive',unit:'%',min:50,max:99,step:1},
+    {key:'pctCreditOnly',label:'% Credit-Only',unit:'%',min:0,max:20,step:0.5},
+    {key:'pctPowerUser',label:'% Power Users',unit:'%',min:1,max:30,step:0.5},
+  ];
+  segRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${base}%</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  const segSum=state.pctInactive+state.pctCreditOnly+state.pctPowerUser;
+  const segColor=Math.abs(segSum-100)<0.1?'var(--green)':'var(--red)';
+  html+=`<div style="margin-top:4px;font-size:10px;color:${segColor}">Total: ${segSum.toFixed(1)}%</div>`;
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('Segments')">Reset</button></div></div>`;
+
+  // — Unit Economics —
+  html+=`<div class="driver-section"><h3>Unit Economics</h3>`;
+  const ueRows=[
+    {key:'blendedCAC',label:'Blended CAC / Signup',unit:'$',min:0.5,max:10,step:0.1},
+    {key:'avgPowerSpend',label:'Avg Power User Spend',unit:'$',min:50,max:500,step:10},
+    {key:'markup',label:'Markup on Cost',unit:'%',min:5,max:30,step:1},
+    {key:'partnerSubsidy',label:'Partner Subsidy / User',unit:'$',min:0,max:25,step:1},
+    {key:'freeCredit',label:'Free Credit / Signup',unit:'$',min:0,max:25,step:1},
+  ];
+  ueRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${r.unit==='$'?'$':''}${base}${r.unit==='%'?'%':''}</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  // Show derived EV per signup
+  const gmr=state.markup/(100+state.markup);
+  const evI=-state.blendedCAC;
+  const evC=-state.blendedCAC-state.creditDeliveryCost+state.partnerSubsidy+state.freeCredit*gmr;
+  const evP=-state.blendedCAC+(state.avgPowerSpend*gmr)-(state.creditDeliveryCost-state.partnerSubsidy-state.freeCredit*gmr);
+  const evBlend=(state.pctInactive/100)*evI+(state.pctCreditOnly/100)*evC+(state.pctPowerUser/100)*evP;
+  html+=`<div style="margin-top:8px;padding:6px 8px;background:var(--accent-dim);border-radius:5px;font-size:10px;color:var(--text-dim)">
+    EV per Signup: <strong style="color:${evBlend>=0?'var(--green)':'var(--red)'}">$${evBlend.toFixed(2)}</strong>
+    &middot; Gross Margin: <strong style="color:var(--text)">${(gmr*100).toFixed(1)}%</strong></div>`;
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('UnitEcon')">Reset</button></div></div>`;
+
+  // — Gross Margin Profile —
+  html+=`<div class="driver-section"><h3>Gross Margin Profile</h3>`;
+  html+=`<div class="hc-note">Negative through 2026, flips positive Jan 2027</div>`;
+  const gmRows=[
+    {key:'gmStart26',label:'Starting GM% (Feb 26)',unit:'%',min:-120,max:-10,step:5},
+    {key:'gmEnd26',label:'Ending GM% (Dec 26)',unit:'%',min:-30,max:0,step:1},
+    {key:'gmStart27',label:'Starting GM% (Jan 27)',unit:'%',min:0,max:15,step:1},
+    {key:'gmGrowthPerMonth27',label:'Monthly Improvement (2027)',unit:'pp',min:0.5,max:6,step:0.5},
+  ];
+  gmRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${base}${r.unit}</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('GM')">Reset</button></div></div>`;
+
+  // — Headcount —
+  html+=`<div class="driver-section"><h3>Headcount &amp; OpEx</h3>`;
+  const totalStart = state.hcGAStart + state.hcRDStart + state.hcSMStart;
+  html+=`<div class="hc-note">Current team: ${totalStart} (${state.hcGAStart} G&A, ${state.hcRDStart} R&D, ${state.hcSMStart} S&M)</div>`;
+  const hcRows=[
+    {key:'hiresPerMonth',label:'New Hires / Month',unit:'',min:0,max:12,step:1},
+    {key:'costPerHeadK',label:'Cost / Head ($K/mo)',unit:'K',min:10,max:40,step:1},
+    {key:'nonPayrollPct',label:'Non-Payroll Factor',unit:'%',min:10,max:50,step:5},
+  ];
+  hcRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${base}${r.unit}</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  html+=`<div style="margin:8px 0 4px;font-size:10px;color:var(--text-muted);font-weight:600">HIRE SPLIT</div>`;
+  const splitRows=[
+    {key:'hireSplitGA',label:'G&A %',unit:'%',min:0,max:60,step:5},
+    {key:'hireSplitRD',label:'R&D %',unit:'%',min:10,max:80,step:5},
+    {key:'hireSplitSM',label:'S&M %',unit:'%',min:0,max:60,step:5},
+  ];
+  splitRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${base}%</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  const splitSum=state.hireSplitGA+state.hireSplitRD+state.hireSplitSM;
+  html+=`<div style="margin-top:4px;font-size:10px;color:${Math.abs(splitSum-100)<1?'var(--green)':'var(--red)'}">Split Total: ${splitSum}%</div>`;
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('Headcount')">Reset</button></div></div>`;
+
+  // — Other Assumptions —
+  html+=`<div class="driver-section"><h3>Other Assumptions</h3>`;
+  const otherRows=[
+    {key:'servicesRev',label:'Monthly Services Rev ($K)',unit:'K',min:0,max:50,step:1},
+    {key:'interestAPR',label:'Interest Rate (APR)',unit:'%',min:0,max:6,step:0.05},
+  ];
+  otherRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${base}</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('Other')">Reset</button></div></div>`;
+
+  // — OpEx Adjustments (6 sliders) —
+  html+=`<div class="driver-section"><h3>OpEx Adjustments</h3>`;
+  html+=`<div class="hc-note">Adjust each OpEx category vs. base</div>`;
+  const opexRows=[
+    {key:'gaPayAdj',label:'G&A Payroll Adj',unit:'%',min:-30,max:50,step:1},
+    {key:'smPayAdj',label:'S&M Payroll Adj',unit:'%',min:-30,max:50,step:1},
+    {key:'rdPayAdj',label:'R&D Payroll Adj',unit:'%',min:-30,max:50,step:1},
+    {key:'gaNonpayAdj',label:'G&A Non-Payroll Adj',unit:'%',min:-30,max:50,step:1},
+    {key:'smNonpayAdj',label:'S&M Non-Payroll Adj',unit:'%',min:-30,max:50,step:1},
+    {key:'rdNonpayAdj',label:'R&D Non-Payroll Adj',unit:'%',min:-30,max:50,step:1},
+  ];
+  opexRows.forEach(r=>{
+    const base=BASE[r.key],cur=state[r.key],mod=Math.abs(cur-base)>0.01;
+    html+=`<div class="driver-row"><div class="driver-label">${r.label}</div><div class="driver-base">Base: ${base}%</div>
+      <input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${cur}"
+        oninput="updateDriver('${r.key}',parseFloat(this.value));this.nextElementSibling.value=this.value">
+      <input type="number" class="driver-input${mod?' modified':''}" value="${cur}" step="${r.step}" min="${r.min}" max="${r.max}"
+        onchange="updateDriver('${r.key}',parseFloat(this.value));if(this.previousElementSibling)this.previousElementSibling.value=this.value;renderDrivers()"
+        ondblclick="updateDriver('${r.key}',${base});renderDrivers()">
+      <span class="driver-unit">${r.unit}</span></div>`;
+  });
+  html+=`<div style="margin-top:6px;text-align:right"><button class="btn btn-reset" style="font-size:9px;padding:3px 8px" onclick="resetSection('OpEx')">Reset</button></div></div>`;
+
+  // — Capital Infusions —
+  html+=`<div class="driver-section"><h3>Capital Infusions</h3>`;
+  html+=`<div class="hc-note">Model potential fundraise rounds</div>`;
+  if (state.infusions && state.infusions.length > 0) {
+    state.infusions.forEach((inf,idx)=>{
+      html+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;color:var(--text-dim);border-bottom:1px solid rgba(42,48,64,0.15)">
+        <button style="cursor:pointer;color:var(--red);font-weight:700;font-size:13px;padding:0 4px;border:none;background:none" onclick="removeInfusion(${idx})">&times;</button>
+        <span style="flex:1">${MONTHS[inf.monthIdx]}</span>
+        <span style="font-weight:600;color:var(--green)">+$${(inf.amountK/1000).toFixed(1)}M</span></div>`;
+    });
+  } else {
+    html+=`<div style="font-size:10px;color:var(--text-muted);padding:4px 0">No infusions planned</div>`;
+  }
+  // Add infusion form
+  html+=`<div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+    <select id="infMonth" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 6px;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;min-width:90px">`;
+  for (let i = NUM_ACTUAL; i < NUM_MONTHS; i++) {
+    html+=`<option value="${i}">${MONTHS[i]}</option>`;
+  }
+  html+=`</select>
+    <input type="number" id="infAmount" placeholder="$M" step="0.5" min="0.5" max="200" value="5"
+      style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 6px;color:var(--text);font-size:11px;font-family:'DM Sans',sans-serif;text-align:right">
+    <span style="font-size:9px;color:var(--text-muted)">$M</span>
+    <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent);padding:4px 10px;font-size:10px" onclick="addInfusion()">Add</button>
+  </div></div>`;
+
+  grid.innerHTML=html;
+}
+
+function addInfusion(){
+  const sel=document.getElementById('infMonth');
+  const amt=document.getElementById('infAmount');
+  const monthIdx=parseInt(sel.value);
+  const amountM=parseFloat(amt.value);
+  if(!amountM||amountM<=0)return;
+  if(!state.infusions)state.infusions=[];
+  state.infusions.push({monthIdx, amountK:amountM*1000});
+  state.infusions.sort((a,b)=>a.monthIdx-b.monthIdx);
+  render();renderDrivers();
+}
+function removeInfusion(idx){
+  state.infusions.splice(idx,1);
+  render();renderDrivers();
+}
+
+function updateDriver(key,val){state[key]=val;render();}
+
+function resetAll(){state=JSON.parse(JSON.stringify(BASE));render();renderDrivers();}
+
+function resetSection(title){
+  const keyMap={
+    'Signups':['startSignups','signupGrowth26','signupGrowth27'],
+    'Segments':['pctInactive','pctCreditOnly','pctPowerUser'],
+    'UnitEcon':['blendedCAC','avgPowerSpend','markup','partnerSubsidy','freeCredit','creditDeliveryCost'],
+    'GM':['gmStart26','gmEnd26','gmStart27','gmGrowthPerMonth27'],
+    'Headcount':['hiresPerMonth','costPerHeadK','nonPayrollPct','hireSplitGA','hireSplitRD','hireSplitSM'],
+    'Other':['servicesRev','interestAPR'],
+    'OpEx':['gaPayAdj','smPayAdj','rdPayAdj','gaNonpayAdj','smNonpayAdj','rdNonpayAdj'],
+  };
+  (keyMap[title]||[]).forEach(k=>state[k]=BASE[k]);
+  render();renderDrivers();
+}
+
+// ===================== TABS =====================
+document.getElementById('tabBar').addEventListener('click',e=>{
+  if(!e.target.classList.contains('tab'))return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('tab-'+e.target.dataset.tab).classList.add('active');
+});
+
+// ===================== INIT =====================
+renderDrivers();
+render();
+</script>
+</body>
+</html>
